@@ -9,7 +9,7 @@ from django.shortcuts import render
 # Create your views here.
 from django.http import HttpResponse
 
-from au import getResponse, cylc_run_dir
+from au import get_response, cylc_run_dir, get_jobs_from_response
 from job import Job
 
 def register(request):
@@ -30,29 +30,46 @@ def suites(request):
     return HttpResponse(template.render(context, request))
     
 def suite_view(request, suitename=''):
-    import json
-    try:
-        print("HASHVAL: " + request.GET.get('hashval'))
-    except:
-        print("Hashval not found")
-
-    data = getResponse(suitename)
-    dataset = []
-    dataOrder = ["name", "label", "latest_message","host","batch_sys_name","submit_method_id","submitted_time_string","started_time_string","finished_time_string","mean_elapsed_time"]
-    if(data == None):
+    from au import save_json_to_model
+    data = get_response(suitename)
+    if(data is None):
         template = loader.get_template('suite_view.html')
         return HttpResponse(template.render(request) )
     else:
-        for job in data:
-            job = job.as_dict()
-            #print(json.dumps(data, indent=4, sort_keys = True))
-        dataset = data
+        current_jobs = get_jobs_from_response(data)
+        save_json_to_model(current_jobs)
+        context = {
+            'data' : current_jobs,
+            'suite' : suitename
+        }
+        template = loader.get_template('suite_view.html')
+        return HttpResponse(template.render(context, request) )
+
+def update_view(request, suitename):
+    from au import diff_state, save_json_to_model, get_state_by_id, get_latest_state_id
+    data = get_response(suitename)
+    if data is None:
+        template = loader.get_template('suite_view.html')
+        return HttpResponse(template.render(request))
+    else:
+        # get clients last state
+        client_id = int(request.GET.get('client_state'))
+        # loads latest data from cylc
+        current_jobs = get_jobs_from_response(data)
+        save_json_to_model(current_jobs)
+        # check if website has received a previous state from server
+
+        # try to get state if it exists, otherwise return all data
+        try:
+            full_state = get_state_by_id(client_id)
+        except:
+            import json
+            current_jobs = json.dumps({"id":get_latest_state_id(),"jobs":current_jobs}, indent=4)
+            return HttpResponse(current_jobs, content_type='application/json')
         
-    context = {
-        'dataOrderKey' : dataOrder,
-        'data' : dataset,
-        'suite' : suitename
-    }
-    template = loader.get_template('suite_view.html')
-    return HttpResponse(template.render(context, request) )
+        client_jobs = get_jobs_from_response(full_state)
+        print(diff_state(client_jobs, current_jobs))
+
+        
+    print("HASHVAL: " + request.GET.get('client_state'))
 

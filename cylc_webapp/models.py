@@ -2,7 +2,8 @@
 from __future__ import unicode_literals
 
 
-from django_mysql.models import JSONField, Model
+from django.db import models
+from django.db.models.fields import TextField,DateTimeField
 
 # Create your models here.
 
@@ -26,5 +27,12 @@ from django_mysql.models import JSONField, Model
 #     dt_mean = models.CharField(max_length=50)
 #     latest_message = models.CharField(max_length=100)
 
-class JSONTracker(Model):
-    json = JSONField(current_state)
+class JSONTracker(models.Model):
+    json = TextField()
+    date_added = DateTimeField()
+
+    #@classmethod
+    #def create(cls, json, date_added):
+    #    tracker = cls(json=json,date_added=date_added)
+    #    return tracker 
+

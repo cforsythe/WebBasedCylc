@@ -6,8 +6,10 @@
     and certificate of the suite. Iorder to view these simply check your "concat"
     file within your suite folder. Might be something like cylc-run/my.suite/.services
 '''
+from __future__ import unicode_literals
 import os
 import json
+
 import requests
 from anytree import Node, RenderTree
 from job import Job, JobNode
@@ -40,7 +42,7 @@ def service_dir(suitename):
     @param {str} suite, the name of the suite 
     TODO: dynamically retrieve passphrase file, error check path, os build path rather than concat
 '''
-def getPassphrase(suite):
+def get_passphrase(suite):
     with open(os.path.join(service_dir(suite), 'passphrase'),'r') as f:
        	passphrase = f.readline()
     return passphrase
@@ -51,7 +53,7 @@ def getPassphrase(suite):
     @param {JSON} suite_json, The returned JSON from the request to 'get_latest_state'
     @param {dict} cycles, The cycle hierarchy for the jobs
 '''
-def getFamilyHierarchy(suite_json, cycles):
+def get_family_hierarchy(suite_json, cycles):
     ancestors = suite_json["ancestors_pruned"]
     cycle_trees = {}
     groupings = {}
@@ -107,7 +109,7 @@ def getFamilyHierarchy(suite_json, cycles):
     Returns a dictionary of string keys and Job Array values
     @param {JSON} suite_json, The returned JSON from the request to 'get_latest_state'
 '''
-def parseJobs(suite_json):
+def parse_jobs(suite_json):
     cycle_hierarchy = {}
     index = 0
     for job, job_dict in suite_json["summary"][1].items():
@@ -126,30 +128,87 @@ def parseJobs(suite_json):
     @param {str} [path = None], the base path to the certificate 
     TODO: dynamically retrieve passphrase file, error check path, os build path rather than concat
 '''
-def getVerify(suite, path=None):
+def get_verify(suite, path=None):
     return os.path.join(service_dir(suite), 'ssl.cert')
 
 '''
     Returns an array of Job objects and a dictionary of strings, JobNodes as a tuple
     TODO: seperate API call from actual parsing of returned value
 '''
-def getResponse(suitename):
+
+def save_json_to_model(json_to_save):
+    from models import JSONTracker 
+    from django.utils import timezone 
+    latest_json = JSONTracker(json=json_to_save, date_added=timezone.now())
+    latest_json.save()
+    return
+
+def get_latest_state_id():
+    from models import JSONTracker
+    doc_id = JSONTracker.objects.latest('date_added').id
+    return doc_id
+
+def get_state_by_id(state_id):
+    from models import JSONTracker
+    state = JSONTracker.objects.get(id=state_id)
+    return state.json
+
+
+def diff_state(client_state, current_state):
+    if client_state is current_state:
+        return None
+    if isinstance(current_state, list):
+        if cmp(client_state, current_state) is 0:
+            return None
+        result = []
+        for i in range(len(current_state)):
+            result.append(diff_state(client_state[i], current_state[i]))
+        return result
+    if isinstance(current_state, dict):
+        if cmp(client_state, current_state) is 0:
+            return None
+        result = {}
+        for i in client_state.keys():
+            diff = diff_state(client_state[i], current_state[i])
+            if i not in current_state.keys():
+                result[i] = None
+            elif diff is None:
+                continue
+            else:
+                result[i] = diff
+        for i in current_state.keys():
+            if i not in client_state.keys():
+                result[i] = current_state[i]
+        return result
+    return current_state
+
+
+def get_jobs_from_response(response):
+    from job import Job
+    jobs = []
+    for job in response:
+        jobs.append(job.as_dict())
+    return jobs 
+
+
+def get_response(suitename):
     contact = contact_file(suitename)
     port = contact['CYLC_SUITE_PORT']
     host = contact['CYLC_SUITE_HOST']
-    auth = requests.auth.HTTPDigestAuth('cylc', getPassphrase(suitename))
+    auth = requests.auth.HTTPDigestAuth('cylc', get_passphrase(suitename))
     session = requests.Session()
     url = "https://%s:%s/get_latest_state" % (host, port)
     try:
         ret = session.get(
                             url,
                             auth = auth,
-                            verify = getVerify(suitename)
+                            verify = get_verify(suitename)
                          )
     
         response = ret.json()
-        cycles = parseJobs(response)
-        hierarchy = getFamilyHierarchy(response, cycles)
+        save_json_to_model(response)
+        cycles = parse_jobs(response)
+        hierarchy = get_family_hierarchy(response, cycles)
         return hierarchy
     except Exception, err: 
         print err

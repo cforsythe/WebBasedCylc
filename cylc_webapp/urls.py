@@ -10,4 +10,5 @@ urlpatterns = [
     url(r'^register', views.register, name='register'),
     url(r'^suites/', views.suites, name='suites'),
     url(r'^suite_view/(?P<suitename>[^/]+)/', views.suite_view, name='suite_view'),
+    url(r'^update_view/(?P<suitename>[^/]+)/', views.update_view , name='update_view')
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)#this is for dev, should be changed for production

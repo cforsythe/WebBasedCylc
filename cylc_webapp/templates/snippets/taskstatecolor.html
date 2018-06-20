@@ -1,0 +1,20 @@
+{% if state == "succeeded" %}
+    <div class="circle" style="background-color: green"> </div>
+{% elif state == "queued" %}
+    <div class="circle" style="background-color: yellow"> </div>
+{% elif state == "waiting" %}
+    <div class="circle" style="background-color: blue"> </div>
+{% elif state == "ready" %}
+    <div class="circle" style="background-color: brown"> </div>
+{% elif state == "held" %}
+    <div class="circle" style="background-color: pink"> </div>
+{% elif state == "failed" %}
+    <div class="circle" style="background-color: red"> </div>
+{% elif state == "running" %}
+    <div class="circle" style="background-color: orange"></div>
+{% else %}
+    <!--TODO: need to make this display the color of the status of the whole group-->
+    <div class="circle" style="background-color: white; border: 1px solid gray"> </div>
+{% endif %}
+
+

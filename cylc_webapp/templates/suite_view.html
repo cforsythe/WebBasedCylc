@@ -7,12 +7,14 @@
         <meta charset="utf-8">
         
         <!--Local Style Sheet-->
-        <link href="{{ static('styles.css') }}" rel="stylesheet" type="text/css" />
+        {% load static %}
+        <link href={% static 'styles.css'  %} rel="stylesheet" type="text/css" />
         <!--Bootstrap-->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
         
         <script src="https://code.jquery.com/jquery-latest.js"> </script>
         <script>
+            current_state = -1
             // regex plugin
             jQuery.expr[':'].regex = function(elem, index, match) {
                 var matchParams = match[3].split(','),
@@ -72,10 +74,10 @@
             function updatePage(){
                 var xhr = new XMLHttpRequest();
                 xhr.onreadystatechange = function(){
-                    console.log(this.responseText);
+                    console.log(xhr.response)
                 }
-                xhr.open("GET","?hashval=" + localStorage.current_hash, true);
-                xhr.send(localStorage.current_hash);
+                xhr.open("GET","{% url 'update_view' suitename=suite %}" + `?client_state=${current_state}`, true);
+                xhr.send();
             }
 
             function addNewBars(){
@@ -134,10 +136,11 @@
     <body>
         
         {% if data is not defined %}
-            {% set no_data = True %}
-            {% set suite_name = "No Suite" %}
+            {% with no_data=True suite_name="No Suite" %}
+            {% endwith %}
         {% else %}
-            {% set suite_name = suite %}
+            {% with suite_name=suite %}
+            {% endwith %}
         {% endif %}
         
         <div class="center">
@@ -165,27 +168,6 @@
             </nav>
             
             <!--TODO: add more states: running, runahead-->
-            {% macro displayStateColor(state = "") -%}
-		        {% if state == "succeeded" %}
-		            <div class="circle" style="background-color: green"> </div>
-    		    {% elif state == "queued" %}
-    		        <div class="circle" style="background-color: yellow"> </div>
-    		    {% elif state == "waiting" %}
-    		        <div class="circle" style="background-color: blue"> </div>
-    		    {% elif state == "ready" %}
-    		        <div class="circle" style="background-color: brown"> </div>
-    		    {% elif state == "held" %}
-    		        <div class="circle" style="background-color: pink"> </div>
-    		    {% elif state == "failed" %}
-    		        <div class="circle" style="background-color: red"> </div>
-                {% elif state == "running" %}
-                    <div class="circle" style="background-color: orange"></div>
-    		    {% else %}
-    		        <!--TODO: need to make this display the color of the status of the whole group-->
-    		        <div class="circle" style="background-color: white; border: 1px solid gray"> </div>
-    		    {% endif %}
-            {%- endmacro %}
-    
             
             {% if no_data %}
                 <span> No Active Suite Running to View! </span>
@@ -209,30 +191,33 @@
                         	</thead>
                         	
                             {% for item in data %}
-                        	<tr class="{{ item['parent_id'] }}">
+                        	<tr class="{{ item.parent_id }}">
                         		<td>
-                        		    {% for i in range(item['indent']) %}    
+                                    <!-- Creates a range that is iterable since integers aren't in django--!>
+                                    {% with ''|center:item.indent as range %}
+                        		    {% for i in range %}    
                         		        &emsp;&emsp;
                         		    {% endfor %}
                         		    
-                        		    {% if item["is_group"]%}
-                        		       <img src="{{ static('Pictures/down_arrow.png') }}" id="{{ item['own_id'] }}" class="toggle" height="20" width="20"></img>
+                        		    {% if item.is_group %}
+                        		       <img src="{% static 'Pictures/down_arrow.png' %}" id="{{ item.own_id }}" class="toggle" height="20" width="20"></img>
                         		    {% endif %}
                         		    
-                        		    {{ displayStateColor(item["state"]) }}
-                                    {{ item["name"] }}
+                                    {% include 'snippets/taskstatecolor.html' with state=item.state %}
+                                    {{ item.name }}
                         		</td>
-                        		<!--<td>{{ item["label"] }}</td>-->
-                        		<td id="state">{{ item["state"] }}</td>
-                        		<td>{{ item["host"] }}</td>
-                        		<td>{{ item["latest_message"] }}</td>
-                        		<td>{{ item["batch_sys_name"] }}</td>
-                        		<td>{{ item["submit_method_id"] }}</td>
-                        		<td>{{ item["submitted_time_string"] }}</td>
-                        		<td id="start-time">{{ item["started_time_string"] }}</td>
-                        		<td id="t-finish">{{ item["finished_time_string"] }}</td>
-                        		<td id="time-to-completion">{{ item["mean_elapsed_time"] }}</td>
+                        		<!--<td>{{ item.label }}</td>-->
+                        		<td id="state">{{ item.state }}</td>
+                        		<td>{{ item.host }}</td>
+                        		<td>{{ item.latest_message }}</td>
+                        		<td>{{ item.batch_sys_name }}</td>
+                        		<td>{{ item.submit_method_id }}</td>
+                        		<td>{{ item.submitted_time_string }}</td>
+                        		<td id="start-time">{{ item.started_time_string }}</td>
+                        		<td id="t-finish">{{ item.finished_time_string }}</td>
+                        		<td id="time-to-completion">{{ item.mean_elapsed_time }}</td>
                         	</tr>
+                            {% endwith %}
                             {% endfor %}
                         </table>
                     </div> <!--refreshableData-->
