@@ -6,7 +6,7 @@
         <title>Available Suites</title>
         <!--Local Style Sheet-->
         {% load static %}
-        <link href={% static 'styles.css' %} rel="stylesheet" type="text/css" />
+        <link href={% static 'css/styles.css' %} rel="stylesheet" type="text/css" />
         <!--Bootstrap-->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
     </head>
@@ -37,10 +37,18 @@
                 </nav>
             </div>
         </div>
-        <div id="suiteList">
-            <ul>
+        <div id="available_suites" class ="available_suites">
+            <h1 class="heading">Available Suites</h1>
+            <ul class="list">
             {% for suite in suites %}
-            <li class="suite_name"> <a href="/suite_view/{{ suite }}">{{suite}}</a> </li>
+            <li class="suite_name">
+                <div class="view_suite">
+                    <a class="suite" href="/suite_view/{{ suite }}">{{suite}}</a>
+                </div>
+                <div >
+                    <a class="start_suite" href="start/{{ suite }}">START</a><a class="stop_suite" href="stop/{{ suite }}">STOP</a> 
+                </div>
+            </li>
             {% endfor %}
             </ul>
         </div>

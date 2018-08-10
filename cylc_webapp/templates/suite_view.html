@@ -8,141 +8,81 @@
         
         <!--Local Style Sheet-->
         {% load static %}
-        <link href={% static 'styles.css'  %} rel="stylesheet" type="text/css" />
+        <link href={% static 'css/styles.css'  %} rel="stylesheet" type="text/css" />
         <!--Bootstrap-->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
         
-        <script src="https://code.jquery.com/jquery-latest.js"> </script>
+        <script src="https://code.jquery.com/jquery-latest.js"></script>
+        <script type="text/javascript" src={% static 'js/task_updater.js' %}></script> 
         <script>
-            current_state = -1
-            // regex plugin
-            jQuery.expr[':'].regex = function(elem, index, match) {
-                var matchParams = match[3].split(','),
-                    validLabels = /^(data|css):/,
-                    attr = {
-                        method: matchParams[0].match(validLabels) ? 
-                                    matchParams[0].split(':')[0] : 'attr',
-                        property: matchParams.shift().replace(validLabels,'')
-                    },
-                    regexFlags = 'ig',
-                    regex = new RegExp(matchParams.join('').replace(/^\s+|\s+$/g,''), regexFlags);
-                return regex.test(jQuery(elem)[attr.method](attr.property));
+            function isUndefined(elem){
+                return typeof elem === "undefined";
             }
-        
+            function setStates(table_name){
+                $("#" + table_name + " tr").each(function(){
+                    var id = $(this).attr('id')
+                    var depth = id.split('.').length - 1
+                    var margin = $(this).find("#spacing")
+                    margin.width(depth * 19)
+                    var circle = $(this).find("#state_circle");
+                    var state = $(this).find("#state").html();
+                    circle.addClass(state);
+                });
+            }
+            function toggleRows(table_name, parent_id){
+                $("#" + table_name + " tr").each(function(){
+                    if($(this).attr('id').includes(parent_id + ".")){
+                        if($(this).hasClass(parent_id)){
+                            $(this).removeClass(parent_id)
+                            var class_list = $(this)[0].classList
+                            if(isUndefined(class_list) || class_list.length == 0){ 
+                                $(this).show("fast", "linear")
+                            }
+                        }
+                        else{
+                            $(this).addClass(parent_id)
+                            $(this).hide("fast", "linear")
+                        }
+                    }
+                });
+            }
             $(document).ready(function() {
-                addNewBars();
-                updatePage(); 
-                //setInterval(refreshData, 2000);
+                updatePage();
+                var job_table = "JobBody"
+                $("#" + job_table).on('click', 'tr', function(){
+                    var parent_id = $(this).attr('id');
+                    $(this).find("#arrow").toggleClass('clicked');
+                    toggleRows(job_table, parent_id)
+                });
             });
-
-            function isInt(time){
-                return Number(time) === time && time % 1 === 0;
-            }
-
-            function isFloat(time){
-                return Number(time) === time && time % 1 !== 0;
-            }
-
-            function isValidDuration(time){
-                return isInt(time) || isFloat(time) 
-            }
-
-            function loadBarCreated(row){
-                return $(this).find("#t-finish .loader").length != 0
-            }   
-
-            function generateLoaderHtml(time, value, overtime, est_finish){
-                var htmlLoader = `<td >
-                                    <div class="outline">
-                                        <div class='progress-bar progress-bar-striped ${overtime} active' role='progressbar'
-                                        aria-valuenow=${value} aria-valuemin='0' aria-valuemax='100' 
-                                        style=width:${value}%>
-                                            ${est_finish}
-                                        </div>
-                                    </div>
-                                  </td>`;
-                return htmlLoader
-            }
-
-            function estimateFinishTime(start_time, secondsToCompletion){
-                var est_finish = start_time;
-                est_finish.setSeconds(start_time.getSeconds() + secondsToCompletion);
-                est_finish = est_finish.toISOString() + "?";
-                return est_finish;
-            }
-
             function updatePage(){
                 var xhr = new XMLHttpRequest();
                 xhr.onreadystatechange = function(){
-                    console.log(xhr.response)
+                    if(xhr.readyState == 4 && xhr.status == 200){
+                        var json = JSON.parse(xhr.response);
+                        console.log(json);
+                        current_state = json['id'];
+                        var jobs = json['jobs'];
+                        if(json['status'] == "reload"){
+                            sessionStorage.setItem('child_counts', JSON.stringify(json['child_counts']))
+                            populate_jobs(jobs);
+                        }
+                        else{
+                            update_jobs(jobs);
+                        }
+                        addNewBars();
+                        setStates("JobBody");
+                    }
                 }
                 xhr.open("GET","{% url 'update_view' suitename=suite %}" + `?client_state=${current_state}`, true);
                 xhr.send();
+                setTimeout(updatePage, 5000)
             }
-
-            function addNewBars(){
-                $("#JobDisplay tr").each(function(){
-                    var secondsToCompletion = Number($(this).find("#time-to-completion").html());
-                    var loadBar = $(this).find("#t-finish");
-                    var state = $(this).find("#state").html();
-                    if(isValidDuration(secondsToCompletion) && !loadBarCreated(this) && state == "running"){
-                        date_string = $(this).find("#start-time").html()
-                        var start_time = new Date(date_string)
-                        var current_time = Date.now()
-                        est_finish = estimateFinishTime(start_time, secondsToCompletion)
-                        var progress = (current_time - start_time)/1000
-                        var loaderVal = (progress/secondsToCompletion*100);
-                        if(loaderVal > 100){
-                            var overtime = "progress-bar-over";
-                            loaderVal = 100
-                        }
-                        loadBar.replaceWith(generateLoaderHtml(secondsToCompletion, loaderVal, overtime, est_finish))
-                    }
-                })
-            }
-            
-            function refreshData() {
-                var url = 'suite_view'; 
-                $('#refreshWrapper').load(url + ' #refreshableData', function(){
-                    //setTimeout(refreshData, 10000);
-                    console.log("refresh")
-                    
-                    // Toggleable
-                    // TODO: how to ensure the values that are hidden stay hidden after an inner refresh? maybe cookies
-                    $('.toggle').each(function(){
-                        var clicked_item_id = $(this).attr('id');
-                        $(this).click(function(){
-                            console.log("toggle class clicked")
-                            
-                            if ($(this).hasClass("rotated"))
-                                $(this).removeClass("rotated")
-                            else
-                                $(this).addClass("rotated") 
-                            
-                            if (clicked_item_id != "") {
-                                console.log("item clicked: " + clicked_item_id)
-                                $(':regex(class, ' + clicked_item_id + ')').toggle(250);
-                            }
-                        });
-                    });
-                    addNewBars();
-                }); 
-            }
-
-        </script> 
+        </script>
     </head>
     
     <!--Content-->
     <body>
-        
-        {% if data is not defined %}
-            {% with no_data=True suite_name="No Suite" %}
-            {% endwith %}
-        {% else %}
-            {% with suite_name=suite %}
-            {% endwith %}
-        {% endif %}
-        
         <div class="center">
             <h1 class="display-4">{{suite_name}}</h1>    
                 
@@ -169,60 +109,27 @@
             
             <!--TODO: add more states: running, runahead-->
             
-            {% if no_data %}
-                <span> No Active Suite Running to View! </span>
-            {% else %}
-            
                 <div id="refreshWrapper">
                     <div id = "refreshableData">
                         <table id="JobDisplay" class="table table-striped">
                             <thead class="thead-dark">
                                 <th>task</th>
                                 <!--<th>label</th>-->
-                            	<th>state</th>
-                            	<th>host</th>
-                            	<th>latest message</th>
-                            	<th>job system</th>
-                            	<th>job ID</th>
-                            	<th>T-submit</th>
-                            	<th>T-start</th>
-                            	<th>T-finish</th>
-                            	<th>dT-mean</th>
+                                <th>state</th>
+                                <th>host</th>
+                                <th>latest message</th>
+                                <th>job system</th>
+                                <th>job ID</th>
+                                <th>T-submit</th>
+                                <th>T-start</th>
+                                <th>T-finish</th>
+                                <th>dT-mean</th>
                         	</thead>
-                        	
-                            {% for item in data %}
-                        	<tr class="{{ item.parent_id }}">
-                        		<td>
-                                    <!-- Creates a range that is iterable since integers aren't in django--!>
-                                    {% with ''|center:item.indent as range %}
-                        		    {% for i in range %}    
-                        		        &emsp;&emsp;
-                        		    {% endfor %}
-                        		    
-                        		    {% if item.is_group %}
-                        		       <img src="{% static 'Pictures/down_arrow.png' %}" id="{{ item.own_id }}" class="toggle" height="20" width="20"></img>
-                        		    {% endif %}
-                        		    
-                                    {% include 'snippets/taskstatecolor.html' with state=item.state %}
-                                    {{ item.name }}
-                        		</td>
-                        		<!--<td>{{ item.label }}</td>-->
-                        		<td id="state">{{ item.state }}</td>
-                        		<td>{{ item.host }}</td>
-                        		<td>{{ item.latest_message }}</td>
-                        		<td>{{ item.batch_sys_name }}</td>
-                        		<td>{{ item.submit_method_id }}</td>
-                        		<td>{{ item.submitted_time_string }}</td>
-                        		<td id="start-time">{{ item.started_time_string }}</td>
-                        		<td id="t-finish">{{ item.finished_time_string }}</td>
-                        		<td id="time-to-completion">{{ item.mean_elapsed_time }}</td>
-                        	</tr>
-                            {% endwith %}
-                            {% endfor %}
+                            <tbody id="JobBody">
+                            </tbody>
                         </table>
                     </div> <!--refreshableData-->
                 </div> <!--refreshWrapper-->    
-                {% endif %}
         </div> <!--center-->
     </body>
 </html>

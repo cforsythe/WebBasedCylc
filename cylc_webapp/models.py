@@ -29,10 +29,5 @@ from django.db.models.fields import TextField,DateTimeField
 
 class JSONTracker(models.Model):
     json = TextField()
-    date_added = DateTimeField()
-
-    #@classmethod
-    #def create(cls, json, date_added):
-    #    tracker = cls(json=json,date_added=date_added)
-    #    return tracker 
+    date_added = DateTimeField(db_index=True)
 
