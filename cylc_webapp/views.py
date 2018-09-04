@@ -78,7 +78,6 @@ def update_view(request, suitename):
         job_diff = diff(client_jobs, data, dump=True)
         return HttpResponse(json.dumps({"id":get_latest_state_id(), "jobs":job_diff, "status":"update"}), content_type='json')
     except Exception as e:
-        print(e)
         jobs, child_counts = get_full_response(suitename)
         current_jobs = json.dumps({"id":get_latest_state_id(),"jobs":jobs,"child_counts":child_counts,  "status":"reload"}, indent=4)
         return HttpResponse(current_jobs, content_type='json')

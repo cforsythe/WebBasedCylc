@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+import pdb
 import json
 import requests
 import suites
@@ -33,7 +34,8 @@ def build_tree(nodes, ancestors, tree = defaultdict(new_dd)):
     return tree
 
 
-def build_flattened_dict(nodes, ancestors, tree = dict()):
+def build_flattened_dict(nodes, ancestors):
+    tree = {}
     for node, data in nodes.iteritems():
         path = ancestors[data['name']][::-1]
         path[0] = data['label']
@@ -110,10 +112,16 @@ def get_cylc_data(suitename):
         return response
     except Exception as e:
         return e
+
+def merge_two_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
         
 def get_jobs_from_cylc_data(response):
-    jobs_tree = build_flattened_dict(response['summary'][2], response['ancestors'])
-    jobs_tree = build_flattened_dict(response['summary'][1], response['ancestors'], tree = jobs_tree)
+    parents = build_flattened_dict(response['summary'][2], response['ancestors'])
+    children = build_flattened_dict(response['summary'][1], response['ancestors'])
+    jobs_tree = merge_two_dicts(parents, children) 
     save_json_to_model(jobs_tree)
     return sorted(jobs_tree.items())
 
@@ -136,7 +144,6 @@ def get_full_response(suitename):
         child_counts = get_child_counts(response['ancestors'])
         return jobs, child_counts
     except Exception as e:
-        print("Exception: " + str(e))
         return "Couldn't get information for " + suitename
     
 

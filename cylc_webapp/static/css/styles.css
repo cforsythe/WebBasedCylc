@@ -58,16 +58,45 @@ nav {
   background-color: grey;
 }
 .circle.waiting {
-    background-color: #FFA500;
+    background-color: aqua;
 }
-.circle.error{
-    background-color: #FF0000;
+.circle.failed{
+    border: 1px solid red;
+    background-color: white;
 }
 .circle.succeeded{
-    background-color: #4AF92F;
+    border: 1px solid black;
+    background-color: white;
 }
-.circle.runahead{
-    background-color: #2B1EC1;
+.circle.runahead .circle.queued{
+    border: 1px solid blue;
+    background-color: white;
+}
+.circle.running{
+    border: 1px solid green;
+    background-color: white; 
+}
+.circle.submitted{
+    background-color: yellow;
+}
+.circle.retrying{
+    background-color: fuchsia;
+}
+.circle.ready{
+    background-color: green;
+}
+.circle.submit-retrying{
+    background-color: red;
+}
+.circle.submit-failed{
+    background-color: blue;
+}
+.circle.expired{
+    background-color: grey;
+}
+.circle.held{
+    border: 1px solid yellow;
+    background-color: white;
 }
 .refreshWrapper {
     border:1px solid #000;
@@ -188,8 +217,10 @@ li a{
 .arrow.clicked{
     transform: rotate(-45deg);
 }
-.child-margins {
+.child_margins {
     display: inline-block;
-    transition: width 1.5s ease;
     width: 0px;
+}
+.flicker{
+    background-color: grey;
 }

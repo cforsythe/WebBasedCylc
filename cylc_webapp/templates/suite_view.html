@@ -3,7 +3,7 @@
 <html lang="en-us">
 
     <head>
-        <title>Capstone</title>
+        <title>Cylc: Suite View</title>
         <meta charset="utf-8">
         
         <!--Local Style Sheet-->
@@ -12,35 +12,37 @@
         <!--Bootstrap-->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
         
-        <script src="https://code.jquery.com/jquery-latest.js"></script>
+        <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha256-2Kok7MbOyxpgUVvAk/HJ2jigOSYS2auK4Pfzbm7uH60=" crossorigin="anonymous"></script>
         <script type="text/javascript" src={% static 'js/task_updater.js' %}></script> 
         <script>
             function isUndefined(elem){
                 return typeof elem === "undefined";
             }
-            function setStates(table_name){
-                $("#" + table_name + " tr").each(function(){
+            function setStates(tableName){
+                $("#" + tableName + " tr").each(function(){
                     var id = $(this).attr('id')
                     var depth = id.split('.').length - 1
                     var margin = $(this).find("#spacing")
                     margin.width(depth * 19)
                     var circle = $(this).find("#state_circle");
-                    var state = $(this).find("#state").html();
+                    var state = $(this).find("#state #text").text();
+                    circle.removeClass();
+                    circle.addClass("circle")
                     circle.addClass(state);
                 });
             }
-            function toggleRows(table_name, parent_id){
-                $("#" + table_name + " tr").each(function(){
-                    if($(this).attr('id').includes(parent_id + ".")){
-                        if($(this).hasClass(parent_id)){
-                            $(this).removeClass(parent_id)
-                            var class_list = $(this)[0].classList
-                            if(isUndefined(class_list) || class_list.length == 0){ 
+            function toggleRows(tableName, parentId){
+                $("#" + tableName + " tr").each(function(){
+                    if($(this).attr('id').includes(parentId + ".")){
+                        if($(this).hasClass(parentId)){
+                            $(this).removeClass(parentId)
+                            var classList = $(this)[0].classList
+                            if(isUndefined(classList) || classList.length == 0){ 
                                 $(this).show("fast", "linear")
                             }
                         }
                         else{
-                            $(this).addClass(parent_id)
+                            $(this).addClass(parentId)
                             $(this).hide("fast", "linear")
                         }
                     }
@@ -48,11 +50,14 @@
             }
             $(document).ready(function() {
                 updatePage();
-                var job_table = "JobBody"
-                $("#" + job_table).on('click', 'tr', function(){
-                    var parent_id = $(this).attr('id');
+                $("#" + TABLE_NAME).on('click', 'tr', function(){
+                    var parentId = $(this).attr('id');
                     $(this).find("#arrow").toggleClass('clicked');
-                    toggleRows(job_table, parent_id)
+                    toggleRows(TABLE_NAME, parentId)
+                });
+                $("#" + 'JobDisplay').on('click', 'th', function(){
+                    th = $(this)[0].cellIndex
+                    sortTable("JobDisplay", th)
                 });
             });
             function updatePage(){
@@ -61,22 +66,26 @@
                     if(xhr.readyState == 4 && xhr.status == 200){
                         var json = JSON.parse(xhr.response);
                         console.log(json);
-                        current_state = json['id'];
                         var jobs = json['jobs'];
-                        if(json['status'] == "reload"){
-                            sessionStorage.setItem('child_counts', JSON.stringify(json['child_counts']))
-                            populate_jobs(jobs);
+                        CURRENT_STATE = json['id'];
+                        var isReload = json['status'] == "reload"
+                        if(isReload){
+                            sessionStorage.setItem('childCounts', JSON.stringify(json['child_counts']))
+                            populateJobs(jobs);
                         }
                         else{
-                            update_jobs(jobs);
+                            if(isString(jobs)){
+                                jobs = JSON.parse(jobs)
+                            }
+                            updateJobs(jobs);
                         }
                         addNewBars();
-                        setStates("JobBody");
+                        setStates(TABLE_NAME);
                     }
                 }
-                xhr.open("GET","{% url 'update_view' suitename=suite %}" + `?client_state=${current_state}`, true);
+                xhr.open("GET","{% url 'update_view' suitename=suite %}" + `?client_state=${CURRENT_STATE}`, true);
                 xhr.send();
-                setTimeout(updatePage, 5000)
+                setTimeout(updatePage, 5000);
             }
         </script>
     </head>
